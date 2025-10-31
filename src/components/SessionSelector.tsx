@@ -19,6 +19,21 @@ const Card = styled.div`
   border: 1px solid #e2e8f0;
   max-width: 500px;
   width: 90%;
+  
+  @media (max-width: 768px) {
+    padding: 32px 24px;
+    width: 95%;
+    border-radius: 12px;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 24px 16px;
+    width: 100%;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    box-shadow: none;
+  }
 `;
 
 const Logo = styled.div`
@@ -31,6 +46,17 @@ const LogoImage = styled.img`
   height: 120px;
   margin-bottom: 16px;
   object-fit: contain;
+  
+  @media (max-width: 768px) {
+    width: 100px;
+    height: 100px;
+  }
+  
+  @media (max-width: 480px) {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 12px;
+  }
 `;
 
 const Title = styled.h1`
@@ -39,6 +65,14 @@ const Title = styled.h1`
   color: #1a202c;
   margin: 0 0 8px 0;
   text-align: center;
+  
+  @media (max-width: 768px) {
+    font-size: 28px;
+  }
+  
+  @media (max-width: 480px) {
+    font-size: 24px;
+  }
 `;
 
 const Subtitle = styled.p`
@@ -46,6 +80,16 @@ const Subtitle = styled.p`
   color: #718096;
   margin: 0 0 32px 0;
   text-align: center;
+  
+  @media (max-width: 768px) {
+    font-size: 15px;
+    margin: 0 0 24px 0;
+  }
+  
+  @media (max-width: 480px) {
+    font-size: 14px;
+    margin: 0 0 20px 0;
+  }
 `;
 
 const ButtonGroup = styled.div`
@@ -86,6 +130,16 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
   
   &:active {
     transform: translateY(0);
+  }
+  
+  @media (max-width: 768px) {
+    padding: 14px 20px;
+    font-size: 15px;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 12px 16px;
+    font-size: 14px;
   }
 `;
 
@@ -142,6 +196,16 @@ const Input = styled.input`
   
   &::placeholder {
     color: #a0aec0;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 10px 12px;
+    font-size: 12px;
   }
 `;
 
@@ -202,6 +266,11 @@ const SessionId = styled.div`
   font-size: 12px;
   color: #667eea;
   font-weight: 600;
+  word-break: break-all;
+  
+  @media (max-width: 480px) {
+    font-size: 11px;
+  }
 `;
 
 const SessionTime = styled.div`
@@ -354,7 +423,7 @@ const SessionSelector: React.FC<SessionSelectorProps> = ({ onSessionSelected, ap
             placeholder="Enter session ID (e.g., meet-abc-defg-hij)"
             value={joinSessionId}
             onChange={(e) => setJoinSessionId(e.target.value)}
-            onKeyPress={(e) => {
+            onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 handleJoinSession();
               }

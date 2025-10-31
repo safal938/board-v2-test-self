@@ -53,7 +53,7 @@ export default async function handler(req, res) {
     console.log("📋 Session ID:", session_id);
 
     // Forward the request to the actual API with session ID
-    const apiUrl = "https://api2.medforce-ai.com/join-meeting";
+    const apiUrl = "https://api.medforce-ai.com/join-meeting";
 
     const response = await fetch(apiUrl, {
       method: "POST",
@@ -65,8 +65,6 @@ export default async function handler(req, res) {
         session_id,
       }),
     });
-
-    // Get the response data
     const data = await response.json();
 
     // Forward the response status and data

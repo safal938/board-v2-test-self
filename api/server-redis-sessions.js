@@ -84,8 +84,13 @@ const broadcastSSE = (sessionId, message) => {
 // Middleware to extract or create session ID
 const sessionMiddleware = (req, res, next) => {
   // Check for session ID in header, query param, or body
+  // Support both sessionId (camelCase) and session_id (snake_case) for compatibility
   let sessionId =
-    req.headers["x-session-id"] || req.query.sessionId || req.body?.sessionId;
+    req.headers["x-session-id"] || 
+    req.query.sessionId || 
+    req.query.session_id ||
+    req.body?.sessionId ||
+    req.body?.session_id;
 
   // If no session ID provided, create a new one
   if (!sessionId) {
