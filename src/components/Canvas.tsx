@@ -383,21 +383,11 @@ const Canvas = ({
       
       console.log(`✅ Reset complete: ${successCount} deleted, ${failCount} failed`);
       
-      // Show summary before reload
-      alert(
-        `Board Reset Complete!\n\n` +
-        `✅ Successfully deleted: ${successCount} items\n` +
-        `❌ Failed: ${failCount} items\n` +
-        `📊 Total processed: ${itemsToActuallyDelete.length} items\n\n` +
-        `The page will now reload.`
-      );
-      
       // Reload the page to refresh the board
       window.location.reload();
       
     } catch (error) {
       console.error('❌ Error resetting board:', error);
-      alert('Failed to reset board. Check console for details.');
     }
   }, [API_BASE_URL]);
   const canvasRef = useRef(null);

@@ -8,7 +8,9 @@
       "web": {
         "supportsScreenSharing": true,
         "logoUrl": "https://www.gstatic.com/images/branding/product/1x/apps_script_48dp.png",
-        "addOnOrigins": ["https://board-v2-test-self.vercel.app"],
+        "addOnOrigins": [
+          "https://board-v2-test-self.vercel.app"
+        ],
         "sidePanelUrl": "https://board-v2-test-self.vercel.app//meet/Sidepanel"
       }
     },

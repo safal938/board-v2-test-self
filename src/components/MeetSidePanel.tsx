@@ -203,7 +203,7 @@ const MeetSidePanel: React.FC = () => {
 
     try {
       await client.startActivity({
-        mainStageUrl: `https://board-v25.vercel.app/meet/Mainstage`
+        mainStageUrl: `https://board-v2-test-self.vercel.app/meet/Mainstage`
       });
     } catch (err) {
       console.error('Failed to launch activity:', err);
@@ -218,7 +218,7 @@ const MeetSidePanel: React.FC = () => {
 
     try {
       // Use the direct API endpoint
-      const API_URL = 'https://api3.medforce-ai.com';
+      const API_URL = 'https://api2.medforce-ai.com';
       const endpoint = `${API_URL}/join-meeting`;
       
       // Use custom URL if provided, otherwise use detected meeting URL
