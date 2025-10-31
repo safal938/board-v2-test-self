@@ -320,14 +320,23 @@ const Canvas = ({
       setShowResetModal(false);
       setIsDeleting(true);
       
-      // Fetch all board items
-      const response = await fetch(`${API_BASE_URL}/api/board-items`);
+      // Get session ID from localStorage or URL
+      const sessionId = localStorage.getItem('boardSessionId') || 
+                       new URLSearchParams(window.location.search).get('sessionId');
+      
+      if (!sessionId) {
+        throw new Error('No session ID found');
+      }
+      
+      // Fetch all board items (session-aware)
+      const response = await fetch(`${API_BASE_URL}/api/board-items?sessionId=${sessionId}`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch board items');
       }
       
-      const data = await response.json();
+      const responseData = await response.json();
+      const data = responseData.items || responseData; // Handle both formats
       console.log(`📊 Found ${data.length} total items`);
       
       // Filter items to delete (exclude 'raw' and 'single-encounter' items)
@@ -351,45 +360,44 @@ const Canvas = ({
       console.log(`🗑️ Deleting ${itemsToActuallyDelete.length} items...`);
       console.log('Items to delete:', itemsToActuallyDelete.map(i => i.id));
       
-      // Delete filtered items
-      const deletePromises = itemsToActuallyDelete.map(async (item: any) => {
-        try {
-          const deleteResponse = await fetch(
-            `${API_BASE_URL}/api/board-items/${item.id}`,
-            { method: 'DELETE' }
-          );
-          const result = await deleteResponse.json();
-          console.log(`✅ Deleted: ${item.id}`);
-          return {
-            id: item.id,
-            status: deleteResponse.status,
-            success: deleteResponse.ok,
-            result
-          };
-        } catch (error) {
-          console.error(`❌ Failed to delete ${item.id}:`, error);
-          return {
-            id: item.id,
-            status: 500,
-            success: false,
-            error: error.message
-          };
+      // Use batch delete endpoint for better performance and no race conditions
+      const itemIds = itemsToActuallyDelete.map(item => item.id);
+      
+      try {
+        const batchDeleteResponse = await fetch(
+          `${API_BASE_URL}/api/board-items/batch-delete?sessionId=${sessionId}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Session-Id': sessionId
+            },
+            body: JSON.stringify({ itemIds })
+          }
+        );
+        
+        if (batchDeleteResponse.ok) {
+          const result = await batchDeleteResponse.json();
+          console.log(`✅ Batch delete complete: ${result.deletedCount} deleted, ${result.remainingCount} remaining`);
+        } else {
+          console.error('❌ Batch delete failed:', batchDeleteResponse.status);
         }
-      });
+      } catch (error) {
+        console.error('❌ Error during batch delete:', error);
+      }
       
-      const results = await Promise.all(deletePromises);
-      const successCount = results.filter(r => r.success).length;
-      const failCount = results.filter(r => !r.success).length;
+      setIsDeleting(false);
       
-      console.log(`✅ Reset complete: ${successCount} deleted, ${failCount} failed`);
-      
-      // Reload the page to refresh the board
-      window.location.reload();
+      // Call parent's reset board function to refresh the UI
+      if (onResetBoard) {
+        await onResetBoard();
+      }
       
     } catch (error) {
       console.error('❌ Error resetting board:', error);
+      setIsDeleting(false);
     }
-  }, [API_BASE_URL]);
+  }, [API_BASE_URL, onResetBoard]);
   const canvasRef = useRef(null);
   const animationFrameRef = useRef(null);
   const [viewport, setViewport] = useState({ x: 0, y: 0, zoom: 1 });
@@ -878,13 +886,21 @@ const Canvas = ({
 
         onUpdateItem(itemId, { x: newX, y: newY });
 
-        // Persist to backend if available
+        // Persist to backend if available (session-aware)
         try {
-          await fetch(`/api/board-items/${itemId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ x: newX, y: newY })
-          });
+          const sessionId = localStorage.getItem('boardSessionId') || 
+                           new URLSearchParams(window.location.search).get('sessionId');
+          
+          if (sessionId) {
+            await fetch(`/api/board-items/${itemId}?sessionId=${sessionId}`, {
+              method: 'PUT',
+              headers: { 
+                'Content-Type': 'application/json',
+                'X-Session-Id': sessionId
+              },
+              body: JSON.stringify({ x: newX, y: newY })
+            });
+          }
         } catch (_) { /* ignore */ }
       } catch (_) { /* ignore */ }
     };

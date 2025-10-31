@@ -525,7 +525,7 @@ const MedicationTimeline: React.FC<MedicationTimelineProps> = ({
         medicationColors[medName as keyof typeof medicationColors] || "#888888";
 
       medicationLines.push({
-        id: `med-${med.name}-${med.start}`,
+        id: `med-${medName}-${med.startDate || med.start}-${offsetIndex}`,
         name: medName,
         color,
         startPosition: Math.max(0, startPosition),

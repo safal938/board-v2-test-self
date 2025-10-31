@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useSearchParams } from "react-router-dom";
 import styled from "styled-components";
 import Canvas from "./components/Canvas";
 import MeetSidePanel from "./components/MeetSidePanel";
 import MeetMainStage from "./components/MeetMainStage";
+import SessionSelector from "./components/SessionSelector";
 import boardItemsData from "./data/boardItems.json";
 
 const AppContainer = styled.div`
@@ -45,6 +46,58 @@ const ConnectionStatus = styled.div<{ mode: 'sse' | 'polling' }>`
   }
 `;
 
+const SessionInfo = styled.div`
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  padding: 8px 16px;
+  background: #1a73e8;
+  color: white;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  z-index: 10000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  font-family: monospace;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  
+  &:hover {
+    max-width: none;
+    white-space: normal;
+  }
+`;
+
+const LeaveSessionButton = styled.button`
+  position: fixed;
+  top: 50px;
+  left: 10px;
+  padding: 8px 16px;
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  z-index: 10000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:hover {
+    background: #b91c1c;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+`;
+
 function App() {
   return (
     <Router>
@@ -61,9 +114,11 @@ function App() {
 
 // Main board application component
 export function BoardApp() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [items, setItems] = useState([]);
   const [selectedItemId, setSelectedItemId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   // Get API base URL - use env var if set, fallback to production backend
   // In production (deployed), use the same origin; in development, use localhost
@@ -73,12 +128,44 @@ export function BoardApp() {
       ? "http://localhost:3001"
       : window.location.origin);
 
+  // Initialize session on mount
+  useEffect(() => {
+    const initSession = async () => {
+      try {
+        // Priority 1: Check URL params (for sharing)
+        let sid = searchParams.get('sessionId');
+        
+        // Priority 2: Check localStorage (but don't auto-use it, let user choose)
+        // We'll only use URL param for auto-join
+        
+        if (sid) {
+          console.log('📋 Using session from URL:', sid);
+          // Store in localStorage
+          localStorage.setItem('boardSessionId', sid);
+          setSessionId(sid);
+        } else {
+          // No session ID in URL - show session selector
+          console.log('📋 No session ID in URL, showing session selector');
+          setSessionId(null);
+        }
+      } catch (error) {
+        console.error('❌ Failed to initialize session:', error);
+        setSessionId(null);
+      }
+    };
+
+    initSession();
+  }, [API_BASE_URL, searchParams]);
+
   // Debug: Log the API base URL on mount
   useEffect(() => {
     console.log("🌐 API_BASE_URL:", API_BASE_URL);
     console.log("🌐 window.location.hostname:", window.location.hostname);
     console.log("🌐 window.location.origin:", window.location.origin);
-  }, [API_BASE_URL]);
+    if (sessionId) {
+      console.log("📋 Session ID:", sessionId);
+    }
+  }, [API_BASE_URL, sessionId]);
 
   // Expose selected item globally and sync with backend
   useEffect(() => {
@@ -101,8 +188,10 @@ export function BoardApp() {
     }
   }, [selectedItemId, items, API_BASE_URL]);
 
-  // Load items from both backend API and static data
+  // Load items from both backend API and static data (session-aware)
   useEffect(() => {
+    if (!sessionId) return; // Wait for session to be initialized
+
     const loadItemsFromBothSources = async () => {
       try {
         setIsLoading(true);
@@ -111,15 +200,16 @@ export function BoardApp() {
         let allItems = [...boardItemsData];
         console.log("📁 Loaded static items:", boardItemsData.length, "items");
         console.log("🌐 API Base URL:", API_BASE_URL);
+        console.log("📋 Session ID:", sessionId);
         console.log("🌐 Current URL:", window.location.href);
         console.log(
           "🌐 Is Meet addon:",
           window.location.pathname.includes("/meet/")
         );
 
-        // Try to load additional items from backend API
+        // Try to load additional items from backend API (session-aware)
         try {
-          const apiUrl = `${API_BASE_URL}/api/board-items`;
+          const apiUrl = `${API_BASE_URL}/api/board-items?sessionId=${sessionId}`;
           console.log("📡 Fetching from:", apiUrl);
           const response = await fetch(apiUrl);
           console.log(
@@ -129,8 +219,10 @@ export function BoardApp() {
           );
 
           if (response.ok) {
-            const apiItems = await response.json();
-            console.log("🌐 Loaded API items:", apiItems.length, "items");
+            const data = await response.json();
+            const apiItems = data.items || data; // Handle both formats
+            console.log("🌐 Loaded API items for session:", sessionId);
+            console.log("🌐 API items count:", apiItems.length);
             console.log(
               "🌐 API item IDs:",
               apiItems.map((i) => i.id).join(", ")
@@ -186,7 +278,7 @@ export function BoardApp() {
     };
 
     loadItemsFromBothSources();
-  }, [API_BASE_URL]);
+  }, [API_BASE_URL, sessionId]); // Re-load when session changes
 
   // Note: Items are now managed by the backend API, no localStorage needed
 
@@ -274,13 +366,41 @@ export function BoardApp() {
   );
 
   const deleteItem = useCallback(
-    (id) => {
-      setItems((prev) => prev.filter((item) => item.id !== id));
-      if (selectedItemId === id) {
-        setSelectedItemId(null);
+    async (id) => {
+      if (!sessionId) return;
+
+      try {
+        // Optimistically update UI
+        setItems((prev) => prev.filter((item) => item.id !== id));
+        if (selectedItemId === id) {
+          setSelectedItemId(null);
+        }
+
+        // Sync deletion to backend (session-aware)
+        const response = await fetch(
+          `${API_BASE_URL}/api/board-items/${id}?sessionId=${sessionId}`,
+          {
+            method: "DELETE",
+            headers: {
+              "X-Session-Id": sessionId,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          console.error("Failed to delete item from backend:", response.status);
+          // Optionally: reload items to sync state
+          // const items = await loadBoardItems(sessionId);
+          // setItems(items);
+        } else {
+          console.log(`✅ Item ${id} deleted from session ${sessionId}`);
+        }
+      } catch (error) {
+        console.error("Error deleting item:", error);
+        // Optionally: reload items to sync state
       }
     },
-    [selectedItemId]
+    [selectedItemId, sessionId, API_BASE_URL]
   );
 
   const focusOnItem = useCallback((itemId) => {
@@ -288,39 +408,43 @@ export function BoardApp() {
   }, []);
 
   const resetBoard = useCallback(async () => {
+    if (!sessionId) return;
+
     try {
-      // Reset to both static data and API data
-      let allItems = [...boardItemsData];
+      console.log(`🔄 Reloading board for session ${sessionId}...`);
 
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/board-items`);
-        if (response.ok) {
-          const apiItems = await response.json();
-          const staticIds = new Set(boardItemsData.map((item) => item.id));
-          const uniqueApiItems = apiItems.filter(
-            (item) => !staticIds.has(item.id)
-          );
-          allItems = [...boardItemsData, ...uniqueApiItems];
-          console.log(
-            "✅ Board reset with combined data:",
-            allItems.length,
-            "items"
-          );
-        } else {
-          console.log("⚠️ API not available for reset, using only static data");
-        }
-      } catch (apiError) {
-        console.log("⚠️ API not available for reset, using only static data");
+      // Reload items from backend
+      const apiUrl = `${API_BASE_URL}/api/board-items?sessionId=${sessionId}`;
+      const response = await fetch(apiUrl);
+
+      if (response.ok) {
+        const data = await response.json();
+        const apiItems = data.items || data;
+        
+        // Merge with static items
+        const staticIds = new Set(boardItemsData.map((item) => item.id));
+        const uniqueApiItems = apiItems.filter(
+          (item) => !staticIds.has(item.id)
+        );
+        
+        const allItems = [...boardItemsData, ...uniqueApiItems];
+        setItems(allItems);
+        setSelectedItemId(null);
+        
+        console.log(`✅ Board reloaded: ${allItems.length} total items`);
+      } else {
+        console.error("Failed to reload board items");
+        // Fallback to static data
+        setItems(boardItemsData);
+        setSelectedItemId(null);
       }
-
-      setItems(allItems);
-      setSelectedItemId(null);
     } catch (error) {
-      console.error("❌ Error resetting board:", error);
+      console.error("❌ Error reloading board:", error);
+      // Fallback: just reset UI to static data
       setItems(boardItemsData);
       setSelectedItemId(null);
     }
-  }, [API_BASE_URL]);
+  }, [API_BASE_URL, sessionId]);
 
   // Handle focus requests from POST requests (simulated)
   const handleFocusRequest = useCallback(
@@ -507,13 +631,15 @@ export function BoardApp() {
       
       const connect = () => {
         try {
-          // Connect directly to the backend SSE endpoint
-          const sseUrl = `${API_BASE_URL}/api/events`;
+          // Connect directly to the backend SSE endpoint (session-aware)
+          const sseUrl = `${API_BASE_URL}/api/events?sessionId=${sessionId}`;
           console.log("🔌 Connecting to SSE:", sseUrl);
+          console.log("📋 Session ID:", sessionId);
           es = new EventSource(sseUrl);
 
           es.addEventListener("connected", (event: any) => {
-            console.log("✅ Connected to SSE:", sseUrl);
+            const data = JSON.parse(event.data);
+            console.log("✅ Connected to SSE for session:", data.sessionId);
             console.log("📡 SSE connection established:", event);
           });
 
@@ -629,8 +755,24 @@ export function BoardApp() {
         es.close();
       }
     };
-  }, [handleFocusRequest, API_BASE_URL, isInMeetAddon, items]);
+  }, [handleFocusRequest, API_BASE_URL, isInMeetAddon, items, sessionId]);
 
+  // Show session selector if no session ID
+  if (!sessionId) {
+    return (
+      <SessionSelector
+        apiBaseUrl={API_BASE_URL}
+        onSessionSelected={(sid) => {
+          console.log('✅ Session selected:', sid);
+          localStorage.setItem('boardSessionId', sid);
+          setSearchParams({ sessionId: sid });
+          setSessionId(sid);
+        }}
+      />
+    );
+  }
+
+  // Show loading while items are being loaded
   if (isLoading) {
     return (
       <AppContainer
@@ -647,8 +789,39 @@ export function BoardApp() {
     );
   }
 
+  const handleLeaveSession = () => {
+    if (window.confirm('Are you sure you want to leave this session?')) {
+      // Clear session from URL
+      setSearchParams({});
+      // Clear session state
+      setSessionId(null);
+      // Don't clear localStorage - keep it for recent sessions
+      console.log('👋 Left session');
+    }
+  };
+
   return (
     <AppContainer>
+      <SessionInfo 
+        title={`Session ID: ${sessionId}\nClick to copy`} 
+        onClick={() => {
+          navigator.clipboard.writeText(sessionId);
+          // Visual feedback without alert (Meet Add-on compatible)
+          const elem = document.querySelector('[title*="Session ID"]') as HTMLElement;
+          if (elem) {
+            const originalText = elem.textContent;
+            elem.textContent = '✓ Copied!';
+            setTimeout(() => {
+              elem.textContent = originalText;
+            }, 2000);
+          }
+        }}
+      >
+        📋 Session: {sessionId.substring(0, 8)}...
+      </SessionInfo>
+      <LeaveSessionButton onClick={handleLeaveSession}>
+        🚪 Leave Session
+      </LeaveSessionButton>
       <ConnectionStatus mode={isInMeetAddon ? 'polling' : 'sse'}>
         {isInMeetAddon ? '🔄 Polling Mode (Meet)' : '📡 Live Updates (SSE)'}
       </ConnectionStatus>

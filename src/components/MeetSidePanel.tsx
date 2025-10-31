@@ -1,6 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import styled from 'styled-components';
-import { meet, type MeetSidePanelClient } from '@googleworkspace/meet-addons/meet.addons';
+import React, { useEffect, useState } from "react";
+import styled from "styled-components";
+import {
+  meet,
+  type MeetSidePanelClient,
+} from "@googleworkspace/meet-addons/meet.addons";
 
 const SidePanelContainer = styled.div`
   width: 100%;
@@ -10,7 +13,7 @@ const SidePanelContainer = styled.div`
   display: flex;
   flex-direction: column;
   gap: 16px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 `;
 
 const Title = styled.h2`
@@ -149,48 +152,62 @@ const LogoText = styled.h1`
 const MeetSidePanel: React.FC = () => {
   const [client, setClient] = useState<MeetSidePanelClient>();
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string>('');
-  const [agentStatus, setAgentStatus] = useState<string>('');
+  const [error, setError] = useState<string>("");
+  const [agentStatus, setAgentStatus] = useState<string>("");
   const [isJoiningAgent, setIsJoiningAgent] = useState(false);
-  const [meetingUrl, setMeetingUrl] = useState<string>('');
-  const [customMeetUrl, setCustomMeetUrl] = useState<string>('');
+  const [meetingUrl, setMeetingUrl] = useState<string>("");
+  const [customMeetUrl, setCustomMeetUrl] = useState<string>("");
+  const [sessionId, setSessionId] = useState<string>("");
+  const [copyFeedback, setCopyFeedback] = useState<string>("");
 
   useEffect(() => {
     const initializeMeetSession = async () => {
       try {
         // Check if we're in a Google Meet context
-        if (typeof window !== 'undefined' && !window.location.href.includes('meet.google.com')) {
+        if (
+          typeof window !== "undefined" &&
+          !window.location.href.includes("meet.google.com")
+        ) {
           // Development mode - show demo interface
-          setError('Demo Mode: This component works within Google Meet. Configure your GCP project number and deploy to use in Meet.');
+          setError(
+            "Demo Mode: This component works within Google Meet. Configure your GCP project number and deploy to use in Meet."
+          );
           setIsLoading(false);
           return;
         }
 
         // Get meeting URL from window location
         const currentUrl = window.location.href;
-        const meetUrlMatch = currentUrl.match(/meet\.google\.com\/([a-z]{3}-[a-z]{4}-[a-z]{3})/);
+        const meetUrlMatch = currentUrl.match(
+          /meet\.google\.com\/([a-z]{3}-[a-z]{4}-[a-z]{3})/
+        );
         if (meetUrlMatch) {
           setMeetingUrl(`https://meet.google.com/${meetUrlMatch[1]}`);
         }
 
         // Replace with your actual GCP project number
         const gcpProjectNumber = process.env.REACT_APP_GCP_PROJECT_NUMBER;
-        if (!gcpProjectNumber || gcpProjectNumber === 'YOUR_GCP_PROJECT_NUMBER') {
-          setError('Please set REACT_APP_GCP_PROJECT_NUMBER in your environment variables');
+        if (
+          !gcpProjectNumber ||
+          gcpProjectNumber === "YOUR_GCP_PROJECT_NUMBER"
+        ) {
+          setError(
+            "Please set REACT_APP_GCP_PROJECT_NUMBER in your environment variables"
+          );
           setIsLoading(false);
           return;
         }
 
         const session = await meet.addon.createAddonSession({
-          cloudProjectNumber: gcpProjectNumber
+          cloudProjectNumber: gcpProjectNumber,
         });
-        
+
         const sidePanelClient = await session.createSidePanelClient();
         setClient(sidePanelClient);
         setIsLoading(false);
       } catch (err) {
-        console.error('Failed to initialize Meet session:', err);
-        setError('Failed to initialize Google Meet integration');
+        console.error("Failed to initialize Meet session:", err);
+        setError("Failed to initialize Google Meet integration");
         setIsLoading(false);
       }
     };
@@ -203,58 +220,66 @@ const MeetSidePanel: React.FC = () => {
 
     try {
       await client.startActivity({
-        mainStageUrl: `https://board-v2-test-self.vercel.app/meet/Mainstage`
+        mainStageUrl: `https://board-v2-test-self.vercel.app/meet/Mainstage`,
       });
     } catch (err) {
-      console.error('Failed to launch activity:', err);
-      setError('Failed to launch board in main stage');
+      console.error("Failed to launch activity:", err);
+      setError("Failed to launch board in main stage");
     }
   };
 
   const handleJoinAgent = async () => {
     setIsJoiningAgent(true);
-    setAgentStatus('');
-    setError(''); // Clear previous errors
+    setAgentStatus("");
+    setError(""); // Clear previous errors
 
     try {
       // Use the direct API endpoint
-      const API_URL = 'https://api2.medforce-ai.com';
+      const API_URL = "https://api2.medforce-ai.com";
       const endpoint = `${API_URL}/join-meeting`;
-      
+
       // Use custom URL if provided, otherwise use detected meeting URL
-      const targetMeetingUrl = customMeetUrl || meetingUrl || window.location.href;
-      
-      console.log('🤖 Joining agent to:', targetMeetingUrl);
-      
+      const targetMeetingUrl =
+        customMeetUrl || meetingUrl || window.location.href;
+
+      console.log("🤖 Joining agent to:", targetMeetingUrl);
+
       const response = await fetch(endpoint, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          meetUrl: targetMeetingUrl
-        })
+          meetUrl: targetMeetingUrl,
+          session_id: sessionId || undefined, // Pass session ID if provided
+        }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        setAgentStatus('success');
-        console.log('✅ Agent joined successfully:', data);
+        setAgentStatus("success");
+        console.log("✅ Agent joined successfully:", data);
       } else {
-        setAgentStatus('error');
+        setAgentStatus("error");
         const errorText = await response.text();
-        console.error('❌ Failed to join agent:', response.status, errorText);
-        setError(`API Error: ${response.status} - ${errorText || 'Please check API endpoint and try again.'}`);
+        console.error("❌ Failed to join agent:", response.status, errorText);
+        setError(
+          `API Error: ${response.status} - ${
+            errorText || "Please check API endpoint and try again."
+          }`
+        );
       }
     } catch (err: any) {
-      console.error('❌ Error joining agent:', err);
-      setAgentStatus('error');
-      
+      console.error("❌ Error joining agent:", err);
+      setAgentStatus("error");
+
       // Check if it's a network or CORS error
-      if (err.message?.includes('Failed to fetch')) {
-        setError('⚠️ Connection Error: Unable to reach API at https://api3.medforce-ai.com. Please check if the API is running and accessible.');
+      if (err.message?.includes("Failed to fetch")) {
+        setError(
+          "⚠️ Connection Error: Unable to reach API at https://api3.medforce-ai.com. Please check if the API is running and accessible."
+        );
       } else {
-        setError(`Error: ${err.message || 'Unknown error occurred'}`);
+        setError(`Error: ${err.message || "Unknown error occurred"}`);
       }
     } finally {
       setIsJoiningAgent(false);
@@ -276,17 +301,30 @@ const MeetSidePanel: React.FC = () => {
           <Logo src="/sidepanelogo.png" alt="Logo" />
           <LogoText>Adverse Events</LogoText>
         </LogoContainer>
-        
+
         <Title>MedForce Board</Title>
-        <StatusText style={{ color: '#d93025', fontSize: '14px', marginBottom: '16px' }}>
+        <StatusText
+          style={{ color: "#d93025", fontSize: "14px", marginBottom: "16px" }}
+        >
           {error}
         </StatusText>
-        {error.includes('Demo Mode') && (
-          <div style={{ background: '#e8f0fe', padding: '16px', borderRadius: '8px', fontSize: '13px', color: '#1a73e8' }}>
+        {error.includes("Demo Mode") && (
+          <div
+            style={{
+              background: "#e8f0fe",
+              padding: "16px",
+              borderRadius: "8px",
+              fontSize: "13px",
+              color: "#1a73e8",
+            }}
+          >
             <strong>Setup Instructions:</strong>
-            <ol style={{ margin: '8px 0', paddingLeft: '20px' }}>
+            <ol style={{ margin: "8px 0", paddingLeft: "20px" }}>
               <li>Get your Google Cloud Project number from the GCP Console</li>
-              <li>Add REACT_APP_GCP_PROJECT_NUMBER=your_project_number to your .env file</li>
+              <li>
+                Add REACT_APP_GCP_PROJECT_NUMBER=your_project_number to your
+                .env file
+              </li>
               <li>Deploy your app to a public URL</li>
               <li>Configure your Meet Add-on in Google Cloud Console</li>
             </ol>
@@ -302,29 +340,29 @@ const MeetSidePanel: React.FC = () => {
         <Logo src="/sidepanelogo.png" alt="Logo" />
         <LogoText>Adverse Events</LogoText>
       </LogoContainer>
-      
+
       <Title>MedForce Board</Title>
       <Description>
-        Launch the collaborative medical board in the main stage where everyone in the call can see and interact with it.
+        Launch the collaborative medical board in the main stage where everyone
+        in the call can see and interact with it.
       </Description>
-      <LaunchButton 
-        onClick={handleLaunchActivity}
-        disabled={!client}
-      >
+      <LaunchButton onClick={handleLaunchActivity} disabled={!client}>
         Launch Board in Main Stage
       </LaunchButton>
       <StatusText>
-        Only you can see this side panel. Click the button above to share the board with everyone in the call.
+        Only you can see this side panel. Click the button above to share the
+        board with everyone in the call.
       </StatusText>
 
       <Divider />
 
-      <Title style={{ fontSize: '16px', marginTop: '8px' }}>AI Assistant</Title>
+      <Title style={{ fontSize: "16px", marginTop: "8px" }}>AI Assistant</Title>
       <Description>
-        Join an AI agent to the meeting that can help with medical documentation and analysis.
+        Join an AI agent to the meeting that can help with medical documentation
+        and analysis.
       </Description>
-      
-      <div style={{ marginTop: '8px' }}>
+
+      <div style={{ marginTop: "8px" }}>
         <InputLabel htmlFor="meetUrl">Meeting URL (optional)</InputLabel>
         <Input
           id="meetUrl"
@@ -333,33 +371,56 @@ const MeetSidePanel: React.FC = () => {
           value={customMeetUrl}
           onChange={(e) => setCustomMeetUrl(e.target.value)}
         />
-        <StatusText style={{ marginTop: '4px' }}>
-          {customMeetUrl ? 'Using custom URL' : meetingUrl ? 'Auto-detected from current meeting' : 'Enter meeting URL manually'}
+        <StatusText style={{ marginTop: "4px" }}>
+          {customMeetUrl
+            ? "Using custom URL"
+            : meetingUrl
+            ? "Auto-detected from current meeting"
+            : "Enter meeting URL manually"}
         </StatusText>
       </div>
 
-      <JoinAgentButton 
+      <div style={{ marginTop: "12px" }}>
+        <InputLabel htmlFor="sessionId">Session ID (required)</InputLabel>
+        <Input
+          id="sessionId"
+          type="text"
+          placeholder="Paste session ID from board (e.g., meet-abc-defg-hij)"
+          value={sessionId}
+          onChange={(e) => setSessionId(e.target.value)}
+        />
+        <StatusText style={{ marginTop: "4px" }}>
+          {sessionId
+            ? "✓ Session ID provided"
+            : "Copy session ID from the board top-left corner"}
+        </StatusText>
+      </div>
+
+      <JoinAgentButton
         onClick={handleJoinAgent}
-        disabled={isJoiningAgent || (!customMeetUrl && !meetingUrl)}
+        disabled={
+          isJoiningAgent || (!customMeetUrl && !meetingUrl) || !sessionId
+        }
       >
-        {isJoiningAgent ? 'Joining Agent...' : 'Join AI Agent'}
+        {isJoiningAgent ? "Joining Agent..." : "Join AI Agent"}
       </JoinAgentButton>
 
-      {agentStatus === 'success' && (
+      {agentStatus === "success" && (
         <SuccessMessage>
           ✅ AI Agent has joined the meeting successfully!
         </SuccessMessage>
       )}
 
-      {agentStatus === 'error' && (
+      {agentStatus === "error" && (
         <ErrorMessage>
-          ❌ Failed to join AI Agent. {error || 'Please try again.'}
+          ❌ Failed to join AI Agent. {error || "Please try again."}
         </ErrorMessage>
       )}
 
       {(customMeetUrl || meetingUrl) && (
-        <StatusText style={{ fontSize: '11px', marginTop: '8px' }}>
+        <StatusText style={{ fontSize: "11px", marginTop: "8px" }}>
           Target: {customMeetUrl || meetingUrl}
+          {sessionId && ` | Session: ${sessionId.substring(0, 12)}...`}
         </StatusText>
       )}
     </SidePanelContainer>

@@ -1,58 +1,69 @@
 /**
  * Vercel Serverless Function - Proxy for Join Meeting API
- * 
+ *
  * This acts as a CORS-safe proxy between your frontend and the actual API
  * Use this if you cannot modify CORS settings on api.medforce-ai.com
  */
 
 export default async function handler(req, res) {
   // Enable CORS for this endpoint
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
   // Handle preflight request
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return res.status(204).end();
   }
 
   // Only allow POST requests
-  if (req.method !== 'POST') {
-    return res.status(405).json({ 
-      error: 'Method not allowed',
-      message: 'Only POST requests are supported'
+  if (req.method !== "POST") {
+    return res.status(405).json({
+      error: "Method not allowed",
+      message: "Only POST requests are supported",
     });
   }
 
   try {
-    const { meetUrl } = req.body;
+    const { meetUrl, session_id } = req.body;
 
     if (!meetUrl) {
       return res.status(400).json({
-        error: 'Missing meetUrl',
-        message: 'Request body must include meetUrl field'
+        error: "Missing meetUrl",
+        message: "Request body must include meetUrl field",
+      });
+    }
+
+    if (!session_id) {
+      return res.status(400).json({
+        error: "Missing session_id",
+        message: "Request body must include session_id field",
       });
     }
 
     // Validate Google Meet URL format
-    if (!meetUrl.startsWith('https://meet.google.com/')) {
+    if (!meetUrl.startsWith("https://meet.google.com/")) {
       return res.status(400).json({
-        error: 'Invalid URL',
-        message: 'meetUrl must be a valid Google Meet URL'
+        error: "Invalid URL",
+        message: "meetUrl must be a valid Google Meet URL",
       });
     }
 
-    console.log('🤖 Proxying join request to API for:', meetUrl);
+    console.log("🤖 Proxying join request to API for:", meetUrl);
+    console.log("📋 Session ID:", session_id);
 
-    // Forward the request to the actual API
-    const apiUrl = 'https://api.medforce-ai.com/join-meeting';
-    
+    // Forward the request to the actual API with session ID
+    const apiUrl = "https://ap2.medforce-ai.com/join-meeting";
+
     const response = await fetch(apiUrl, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify({ meetUrl })
+      body: JSON.stringify({
+        meetUrl,
+        session_id,
+      }),
     });
 
     // Get the response data
@@ -60,13 +71,12 @@ export default async function handler(req, res) {
 
     // Forward the response status and data
     return res.status(response.status).json(data);
-
   } catch (error) {
-    console.error('❌ Error in join-meeting proxy:', error);
-    
+    console.error("❌ Error in join-meeting proxy:", error);
+
     return res.status(500).json({
-      error: 'Proxy error',
-      message: error.message || 'Failed to connect to API server'
+      error: "Proxy error",
+      message: error.message || "Failed to connect to API server",
     });
   }
 }
