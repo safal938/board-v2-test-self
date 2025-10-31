@@ -64,10 +64,17 @@ const SessionInfo = styled.div`
   text-overflow: ellipsis;
   white-space: nowrap;
   cursor: pointer;
+  transition: all 0.2s;
   
   &:hover {
-    max-width: none;
+    max-width: 500px;
     white-space: normal;
+    background: #1557b0;
+    padding: 12px 20px;
+  }
+  
+  &:active {
+    transform: scale(0.98);
   }
 `;
 
@@ -119,6 +126,7 @@ export function BoardApp() {
   const [selectedItemId, setSelectedItemId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [showFullSessionId, setShowFullSessionId] = useState(false);
 
   // Get API base URL - use env var if set, fallback to production backend
   // In production (deployed), use the same origin; in development, use localhost
@@ -803,21 +811,49 @@ export function BoardApp() {
   return (
     <AppContainer>
       <SessionInfo 
-        title={`Session ID: ${sessionId}\nClick to copy`} 
-        onClick={() => {
-          navigator.clipboard.writeText(sessionId);
-          // Visual feedback without alert (Meet Add-on compatible)
-          const elem = document.querySelector('[title*="Session ID"]') as HTMLElement;
-          if (elem) {
-            const originalText = elem.textContent;
-            elem.textContent = '✓ Copied!';
+        title={`Session ID: ${sessionId}\nClick to copy`}
+        onMouseEnter={() => setShowFullSessionId(true)}
+        onMouseLeave={() => setShowFullSessionId(false)}
+        onClick={async (e) => {
+          const elem = e.currentTarget as HTMLElement;
+          const originalText = elem.textContent;
+          
+          try {
+            // Try modern clipboard API first
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              await navigator.clipboard.writeText(sessionId);
+              elem.textContent = '✓ Copied!';
+            } else {
+              // Fallback: Create temporary textarea for older browsers/restricted contexts
+              const textarea = document.createElement('textarea');
+              textarea.value = sessionId;
+              textarea.style.position = 'fixed';
+              textarea.style.opacity = '0';
+              document.body.appendChild(textarea);
+              textarea.select();
+              const success = document.execCommand('copy');
+              document.body.removeChild(textarea);
+              
+              if (success) {
+                elem.textContent = '✓ Copied!';
+              } else {
+                elem.textContent = '✗ Copy failed';
+              }
+            }
+            
+            setTimeout(() => {
+              elem.textContent = originalText;
+            }, 2000);
+          } catch (err) {
+            console.error('Copy failed:', err);
+            elem.textContent = '✗ Copy failed';
             setTimeout(() => {
               elem.textContent = originalText;
             }, 2000);
           }
         }}
       >
-        📋 Session: {sessionId.substring(0, 8)}...
+        📋 Session: {showFullSessionId ? sessionId : `${sessionId.substring(0, 8)}...`}
       </SessionInfo>
       <LeaveSessionButton onClick={handleLeaveSession}>
         🚪 Leave Session

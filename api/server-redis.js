@@ -317,16 +317,22 @@ const findTaskZonePosition = (newItem, existingItems) => {
       item.x < TASK_ZONE.x + TASK_ZONE.width &&
       item.y >= TASK_ZONE.y &&
       item.y < TASK_ZONE.y + TASK_ZONE.height &&
-      item.type === "todo"  // ONLY TODO items belong in Task Zone
+      item.type === "todo" // ONLY TODO items belong in Task Zone
   );
 
-  console.log(`🎯 Finding position in Task Management Zone for ${newItem.type} item`);
-  console.log(`📊 Found ${taskZoneItems.length} existing TODO items in Task Zone`);
+  console.log(
+    `🎯 Finding position in Task Management Zone for ${newItem.type} item`
+  );
+  console.log(
+    `📊 Found ${taskZoneItems.length} existing TODO items in Task Zone`
+  );
 
   const newItemHeight = estimateItemHeight(newItem);
   const newItemWidth = newItem.width || colWidth;
 
-  console.log(`📏 Estimated new item dimensions: ${newItemWidth}w × ${newItemHeight}h`);
+  console.log(
+    `📏 Estimated new item dimensions: ${newItemWidth}w × ${newItemHeight}h`
+  );
 
   const columns = Array(maxColumns).fill(startY);
 
@@ -340,11 +346,15 @@ const findTaskZonePosition = (newItem, existingItems) => {
         columns[col] = itemBottom;
       }
 
-      console.log(`📦 Item ${item.id} in column ${col}, bottom at ${itemBottom}px (height: ${itemHeight}px)`);
+      console.log(
+        `📦 Item ${item.id} in column ${col}, bottom at ${itemBottom}px (height: ${itemHeight}px)`
+      );
     }
   });
 
-  console.log(`📊 Column heights: ${columns.map((h, i) => `Col${i}:${h}`).join(", ")}`);
+  console.log(
+    `📊 Column heights: ${columns.map((h, i) => `Col${i}:${h}`).join(", ")}`
+  );
 
   let bestCol = 0;
   let bestY = columns[0];
@@ -393,13 +403,17 @@ const findPositionInZone = (newItem, existingItems, zoneConfig) => {
       item.y < zoneConfig.y + zoneConfig.height
   );
 
-  console.log(`🎯 Finding position in zone (${zoneConfig.x}, ${zoneConfig.y}) for ${newItem.type} item`);
+  console.log(
+    `🎯 Finding position in zone (${zoneConfig.x}, ${zoneConfig.y}) for ${newItem.type} item`
+  );
   console.log(`📊 Found ${zoneItems.length} existing items in zone`);
 
   const newItemHeight = estimateItemHeight(newItem);
   const newItemWidth = newItem.width || colWidth;
 
-  console.log(`📏 Estimated new item dimensions: ${newItemWidth}w × ${newItemHeight}h`);
+  console.log(
+    `📏 Estimated new item dimensions: ${newItemWidth}w × ${newItemHeight}h`
+  );
 
   const columns = Array(maxColumns).fill(startY);
 
@@ -413,11 +427,15 @@ const findPositionInZone = (newItem, existingItems, zoneConfig) => {
         columns[col] = itemBottom;
       }
 
-      console.log(`📦 Item ${item.id} in column ${col}, bottom at ${itemBottom}px (height: ${itemHeight}px)`);
+      console.log(
+        `📦 Item ${item.id} in column ${col}, bottom at ${itemBottom}px (height: ${itemHeight}px)`
+      );
     }
   });
 
-  console.log(`📊 Column heights: ${columns.map((h, i) => `Col${i}:${h}`).join(", ")}`);
+  console.log(
+    `📊 Column heights: ${columns.map((h, i) => `Col${i}:${h}`).join(", ")}`
+  );
 
   let bestCol = 0;
   let bestY = columns[0];
@@ -465,19 +483,31 @@ const findDoctorsNotePosition = (newItem, existingItems) => {
       item.type === "doctor-note"
   );
 
-  console.log(`🎯 Finding position in Doctor's Notes Zone for ${newItem.type} item`);
-  console.log(`📊 Found ${noteZoneItems.length} existing notes in Doctor's Notes Zone`);
+  console.log(
+    `🎯 Finding position in Doctor's Notes Zone for ${newItem.type} item`
+  );
+  console.log(
+    `📊 Found ${noteZoneItems.length} existing notes in Doctor's Notes Zone`
+  );
 
   const maxCols = Math.floor(DOCTORS_NOTE_ZONE.width / colWidth);
   const maxRows = Math.floor(DOCTORS_NOTE_ZONE.height / rowHeight);
 
-  console.log(`📐 Grid capacity: ${maxCols} columns × ${maxRows} rows = ${maxCols * maxRows} positions`);
+  console.log(
+    `📐 Grid capacity: ${maxCols} columns × ${maxRows} rows = ${
+      maxCols * maxRows
+    } positions`
+  );
 
-  const grid = Array(maxRows).fill(null).map(() => Array(maxCols).fill(false));
+  const grid = Array(maxRows)
+    .fill(null)
+    .map(() => Array(maxCols).fill(false));
 
   noteZoneItems.forEach((item) => {
     const col = Math.floor((item.x - DOCTORS_NOTE_ZONE.x - padding) / colWidth);
-    const row = Math.floor((item.y - DOCTORS_NOTE_ZONE.y - padding) / rowHeight);
+    const row = Math.floor(
+      (item.y - DOCTORS_NOTE_ZONE.y - padding) / rowHeight
+    );
 
     if (row >= 0 && row < maxRows && col >= 0 && col < maxCols) {
       grid[row][col] = true;
@@ -490,7 +520,9 @@ const findDoctorsNotePosition = (newItem, existingItems) => {
       if (!grid[row][col]) {
         const x = DOCTORS_NOTE_ZONE.x + col * colWidth + padding;
         const y = DOCTORS_NOTE_ZONE.y + row * rowHeight + padding;
-        console.log(`✅ Found available position: row ${row}, col ${col} at (${x}, ${y})`);
+        console.log(
+          `✅ Found available position: row ${row}, col ${col} at (${x}, ${y})`
+        );
         return { x, y };
       }
     }
@@ -520,15 +552,25 @@ const findRetrievedDataZonePosition = (newItem, existingItems) => {
         item.type === "clinical-data")
   );
 
-  console.log(`🎯 Finding position in Retrieved Data Zone for ${newItem.type} item`);
-  console.log(`📊 Found ${retrievedDataZoneItems.length} existing EHR data items in Retrieved Data Zone`);
+  console.log(
+    `🎯 Finding position in Retrieved Data Zone for ${newItem.type} item`
+  );
+  console.log(
+    `📊 Found ${retrievedDataZoneItems.length} existing EHR data items in Retrieved Data Zone`
+  );
 
   const maxCols = Math.floor(RETRIEVED_DATA_ZONE.width / colWidth);
   const maxRows = Math.floor(RETRIEVED_DATA_ZONE.height / rowHeight);
 
-  console.log(`📐 Grid capacity: ${maxCols} columns × ${maxRows} rows = ${maxCols * maxRows} positions`);
+  console.log(
+    `📐 Grid capacity: ${maxCols} columns × ${maxRows} rows = ${
+      maxCols * maxRows
+    } positions`
+  );
 
-  const grid = Array(maxRows).fill(null).map(() => Array(maxCols).fill(false));
+  const grid = Array(maxRows)
+    .fill(null)
+    .map(() => Array(maxCols).fill(false));
 
   retrievedDataZoneItems.forEach((item) => {
     const col = Math.floor((item.x - RETRIEVED_DATA_ZONE.x) / colWidth);
@@ -545,14 +587,19 @@ const findRetrievedDataZonePosition = (newItem, existingItems) => {
       if (!grid[row][col]) {
         const x = RETRIEVED_DATA_ZONE.x + col * colWidth + padding;
         const y = RETRIEVED_DATA_ZONE.y + row * rowHeight + 60;
-        console.log(`✅ Found available position: row ${row}, col ${col} at (${x}, ${y})`);
+        console.log(
+          `✅ Found available position: row ${row}, col ${col} at (${x}, ${y})`
+        );
         return { x, y };
       }
     }
   }
 
   const x = RETRIEVED_DATA_ZONE.x + padding;
-  const y = RETRIEVED_DATA_ZONE.y + 60 + retrievedDataZoneItems.length * (rowHeight + padding);
+  const y =
+    RETRIEVED_DATA_ZONE.y +
+    60 +
+    retrievedDataZoneItems.length * (rowHeight + padding);
   console.log(`⚠️  Grid full, stacking vertically at (${x}, ${y})`);
   return { x, y };
 };
@@ -571,7 +618,9 @@ const findNonOverlappingPosition = (newItem, existingItems) => {
     testY = Math.random() * 7000 + 100;
   }
 
-  console.log(`🔍 Checking collision for new item at (${testX}, ${testY}) with ${existingItems.length} existing items`);
+  console.log(
+    `🔍 Checking collision for new item at (${testX}, ${testY}) with ${existingItems.length} existing items`
+  );
 
   while (attempts < maxAttempts) {
     let hasCollision = false;
@@ -585,7 +634,9 @@ const findNonOverlappingPosition = (newItem, existingItems) => {
       };
 
       if (checkCollision(testItem, existingItem)) {
-        console.log(`⚠️  Collision detected with existing item ${existingItem.id} at (${existingItem.x}, ${existingItem.y})`);
+        console.log(
+          `⚠️  Collision detected with existing item ${existingItem.id} at (${existingItem.x}, ${existingItem.y})`
+        );
         hasCollision = true;
         break;
       }
@@ -605,18 +656,24 @@ const findNonOverlappingPosition = (newItem, existingItems) => {
     }
 
     testY = maxBottom + padding;
-    console.log(`📍 Moving to position below bottom-most item: (${testX}, ${testY})`);
+    console.log(
+      `📍 Moving to position below bottom-most item: (${testX}, ${testY})`
+    );
 
     if (testY > 8000) {
       testX = Math.random() * 8000 + 100;
       testY = Math.random() * 7000 + 100;
-      console.log(`🔄 Canvas too crowded, trying new random position: (${testX}, ${testY})`);
+      console.log(
+        `🔄 Canvas too crowded, trying new random position: (${testX}, ${testY})`
+      );
     }
 
     attempts++;
   }
 
-  console.log(`⚠️  Could not find non-overlapping position after ${attempts} attempts, using fallback position (${testX}, ${testY})`);
+  console.log(
+    `⚠️  Could not find non-overlapping position after ${attempts} attempts, using fallback position (${testX}, ${testY})`
+  );
   return { x: testX, y: testY };
 };
 
@@ -942,7 +999,11 @@ app.post("/api/lab-results", async (req, res) => {
       itemY = req.body.y;
     } else {
       const tempItem = { type: "lab-result", width: 400, height: 280 };
-      const position = findPositionInZone(tempItem, existingItems, RETRIEVED_DATA_ZONE);
+      const position = findPositionInZone(
+        tempItem,
+        existingItems,
+        RETRIEVED_DATA_ZONE
+      );
       itemX = position.x;
       itemY = position.y;
     }
@@ -990,7 +1051,8 @@ app.post("/api/lab-results", async (req, res) => {
 app.post("/api/ehr-data", async (req, res) => {
   try {
     const sessionId = req.sessionId;
-    const { title, content, dataType, source, x, y, width, height } = req.body || {};
+    const { title, content, dataType, source, x, y, width, height } =
+      req.body || {};
 
     if (!title || !content) {
       return res.status(400).json({
@@ -999,7 +1061,9 @@ app.post("/api/ehr-data", async (req, res) => {
     }
 
     const existingItems = await loadBoardItems(sessionId);
-    const itemId = `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const itemId = `item-${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
 
     let itemX, itemY;
     if (x !== undefined && y !== undefined) {
@@ -1011,7 +1075,11 @@ app.post("/api/ehr-data", async (req, res) => {
         width: width || 400,
         height: height || 300,
       };
-      const position = findPositionInZone(tempItem, existingItems, RETRIEVED_DATA_ZONE);
+      const position = findPositionInZone(
+        tempItem,
+        existingItems,
+        RETRIEVED_DATA_ZONE
+      );
       itemX = position.x;
       itemY = position.y;
     }
@@ -1033,7 +1101,9 @@ app.post("/api/ehr-data", async (req, res) => {
     existingItems.push(newItem);
     await saveBoardItems(sessionId, existingItems);
 
-    console.log(`✅ Created EHR data item: ${itemId} - "${title}" in session ${sessionId}`);
+    console.log(
+      `✅ Created EHR data item: ${itemId} - "${title}" in session ${sessionId}`
+    );
 
     broadcastSSE(sessionId, {
       event: "new-item",
@@ -1086,7 +1156,9 @@ app.post("/api/doctor-notes", async (req, res) => {
     items.push(noteItem);
     await saveBoardItems(sessionId, items);
 
-    console.log(`✅ Created doctor's note: ${noteId} at (${position.x}, ${position.y}) in session ${sessionId}`);
+    console.log(
+      `✅ Created doctor's note: ${noteId} at (${position.x}, ${position.y}) in session ${sessionId}`
+    );
 
     broadcastSSE(sessionId, {
       event: "new-item",
@@ -1146,7 +1218,9 @@ app.post("/api/enhanced-todo", async (req, res) => {
       }
 
       if (!todo.id) {
-        const taskId = `task-${Date.now()}-${Math.random().toString(36).substr(2, 6)}-${i}`;
+        const taskId = `task-${Date.now()}-${Math.random()
+          .toString(36)
+          .substr(2, 6)}-${i}`;
         todo.id = taskId;
       }
 
@@ -1161,14 +1235,17 @@ app.post("/api/enhanced-todo", async (req, res) => {
           }
           if (!["pending", "executing", "finished"].includes(subTodo.status)) {
             return res.status(400).json({
-              error: "Sub-todo status must be one of: pending, executing, finished",
+              error:
+                "Sub-todo status must be one of: pending, executing, finished",
             });
           }
         }
       }
     }
 
-    const id = `enhanced-todo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const id = `enhanced-todo-${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
     const existingItems = await loadBoardItems(sessionId);
 
     let itemX, itemY;
@@ -1182,7 +1259,11 @@ app.post("/api/enhanced-todo", async (req, res) => {
         height: height,
         todoData: { todos, description },
       };
-      const taskPosition = findPositionInZone(tempItem, existingItems, TASK_ZONE);
+      const taskPosition = findPositionInZone(
+        tempItem,
+        existingItems,
+        TASK_ZONE
+      );
       itemX = taskPosition.x;
       itemY = taskPosition.y;
     }
@@ -1230,7 +1311,18 @@ app.post("/api/enhanced-todo", async (req, res) => {
 app.post("/api/board-items", async (req, res) => {
   try {
     const sessionId = req.sessionId;
-    const { type, componentType, x, y, width, height, content, color, rotation, ehrData } = req.body;
+    const {
+      type,
+      componentType,
+      x,
+      y,
+      width,
+      height,
+      content,
+      color,
+      rotation,
+      ehrData,
+    } = req.body;
 
     if (!type) {
       return res.status(400).json({ error: "Type is required" });
@@ -1269,8 +1361,14 @@ app.post("/api/board-items", async (req, res) => {
     } else {
       defaultWidth = type === "text" ? 200 : type === "ehr" ? 550 : 150;
       defaultHeight = type === "text" ? 100 : type === "ehr" ? 450 : 150;
-      defaultColor = type === "sticky" ? "#ffeb3b" : type === "ehr" ? "#e8f5e8" : "#2196f3";
-      defaultContent = type === "text" ? "Double click to edit" : type === "ehr" ? "EHR Data" : "";
+      defaultColor =
+        type === "sticky" ? "#ffeb3b" : type === "ehr" ? "#e8f5e8" : "#2196f3";
+      defaultContent =
+        type === "text"
+          ? "Double click to edit"
+          : type === "ehr"
+          ? "EHR Data"
+          : "";
     }
 
     const newItem = {
@@ -1342,7 +1440,7 @@ const sessionLocks = new Map();
 // Helper function to acquire lock
 const acquireLock = async (sessionId) => {
   while (sessionLocks.get(sessionId)) {
-    await new Promise(resolve => setTimeout(resolve, 10));
+    await new Promise((resolve) => setTimeout(resolve, 10));
   }
   sessionLocks.set(sessionId, true);
 };
@@ -1370,8 +1468,10 @@ app.delete("/api/board-items/:id", async (req, res) => {
     }
 
     await saveBoardItems(sessionId, filteredItems);
-    
-    console.log(`✅ Deleted item ${id} from session ${sessionId}. ${items.length} → ${filteredItems.length} items`);
+
+    console.log(
+      `✅ Deleted item ${id} from session ${sessionId}. ${items.length} → ${filteredItems.length} items`
+    );
 
     // Release lock
     releaseLock(sessionId);
@@ -1405,7 +1505,9 @@ app.post("/api/board-items/batch-delete", async (req, res) => {
 
     await saveBoardItems(sessionId, filteredItems);
 
-    console.log(`✅ Batch deleted ${deletedCount} items from session ${sessionId}. ${items.length} → ${filteredItems.length} items`);
+    console.log(
+      `✅ Batch deleted ${deletedCount} items from session ${sessionId}. ${items.length} → ${filteredItems.length} items`
+    );
 
     // Release lock
     releaseLock(sessionId);
@@ -1414,7 +1516,7 @@ app.post("/api/board-items/batch-delete", async (req, res) => {
       sessionId,
       message: `Successfully deleted ${deletedCount} items`,
       deletedCount,
-      remainingCount: filteredItems.length
+      remainingCount: filteredItems.length,
     });
   } catch (error) {
     console.error("Error batch deleting items:", error);
