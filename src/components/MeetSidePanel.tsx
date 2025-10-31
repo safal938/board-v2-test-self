@@ -182,7 +182,13 @@ const MeetSidePanel: React.FC = () => {
           /meet\.google\.com\/([a-z]{3}-[a-z]{4}-[a-z]{3})/
         );
         if (meetUrlMatch) {
-          setMeetingUrl(`https://meet.google.com/${meetUrlMatch[1]}`);
+          const meetCode = meetUrlMatch[1];
+          setMeetingUrl(`https://meet.google.com/${meetCode}`);
+          
+          // Auto-generate session ID from meet code
+          const derivedSessionId = `meet-${meetCode}`;
+          setSessionId(derivedSessionId);
+          console.log('📋 Auto-generated session ID:', derivedSessionId);
         }
 
         // Replace with your actual GCP project number
@@ -219,8 +225,15 @@ const MeetSidePanel: React.FC = () => {
     if (!client) return;
 
     try {
+      // Pass session ID in the URL so the main stage uses the same session
+      const mainStageUrl = sessionId 
+        ? `https://board-v2-test-self.vercel.app/?sessionId=${sessionId}`
+        : `https://board-v2-test-self.vercel.app/meet/Mainstage`;
+      
+      console.log('🚀 Launching main stage with URL:', mainStageUrl);
+      
       await client.startActivity({
-        mainStageUrl: `https://board-v2-test-self.vercel.app/meet/Mainstage`,
+        mainStageUrl,
       });
     } catch (err) {
       console.error("Failed to launch activity:", err);
@@ -381,18 +394,25 @@ const MeetSidePanel: React.FC = () => {
       </div>
 
       <div style={{ marginTop: "12px" }}>
-        <InputLabel htmlFor="sessionId">Session ID (required)</InputLabel>
+        <InputLabel htmlFor="sessionId">Session ID</InputLabel>
         <Input
           id="sessionId"
           type="text"
-          placeholder="Paste session ID from board (e.g., meet-abc-defg-hij)"
+          placeholder="meet-xxx-xxxx-xxx"
           value={sessionId}
           onChange={(e) => setSessionId(e.target.value)}
+          readOnly={!!sessionId && sessionId.startsWith('meet-')}
+          style={{
+            background: sessionId && sessionId.startsWith('meet-') ? '#f0f0f0' : 'white',
+            cursor: sessionId && sessionId.startsWith('meet-') ? 'not-allowed' : 'text'
+          }}
         />
         <StatusText style={{ marginTop: "4px" }}>
-          {sessionId
-            ? "✓ Session ID provided"
-            : "Copy session ID from the board top-left corner"}
+          {sessionId && sessionId.startsWith('meet-')
+            ? "✓ Auto-generated from meeting code"
+            : sessionId
+            ? "✓ Custom session ID"
+            : "Session ID will be auto-generated"}
         </StatusText>
       </div>
 

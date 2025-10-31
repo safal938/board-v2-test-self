@@ -1525,6 +1525,42 @@ app.post("/api/board-items/batch-delete", async (req, res) => {
   }
 });
 
+// POST /api/board-items/sync - Sync all items to Redis (session-aware)
+app.post("/api/board-items/sync", async (req, res) => {
+  const sessionId = req.sessionId;
+  const { items } = req.body;
+
+  if (!items || !Array.isArray(items)) {
+    return res.status(400).json({ error: "items array is required" });
+  }
+
+  try {
+    // Acquire lock to prevent race conditions
+    await acquireLock(sessionId);
+
+    // Save all items to Redis
+    await saveBoardItems(sessionId, items);
+
+    console.log(
+      `💾 Synced ${items.length} items to Redis for session ${sessionId}`
+    );
+
+    // Release lock
+    releaseLock(sessionId);
+
+    res.json({
+      success: true,
+      sessionId,
+      itemCount: items.length,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("Error syncing items:", error);
+    releaseLock(sessionId);
+    res.status(500).json({ error: "Failed to sync items" });
+  }
+});
+
 // POST /api/selected-item - Update currently selected item (session-aware)
 app.post("/api/selected-item", async (req, res) => {
   const sessionId = req.sessionId;

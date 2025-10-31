@@ -576,6 +576,36 @@ export function BoardApp() {
     return () => clearTimeout(timeoutId);
   }, [items, updateItem]);
 
+  // Sync items to Redis when they change (separate from SSE connection)
+  useEffect(() => {
+    if (!sessionId || items.length === 0) return;
+
+    // Debounce the sync to avoid too many API calls
+    const syncTimeout = setTimeout(async () => {
+      try {
+        console.log(`💾 Syncing ${items.length} items to Redis for session ${sessionId}`);
+        
+        await fetch(`${API_BASE_URL}/api/board-items/sync`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Session-Id': sessionId,
+          },
+          body: JSON.stringify({
+            sessionId,
+            items: items,
+          }),
+        });
+        
+        console.log('✅ Items synced to Redis');
+      } catch (error) {
+        console.error('❌ Failed to sync items to Redis:', error);
+      }
+    }, 1000); // Debounce by 1 second
+
+    return () => clearTimeout(syncTimeout);
+  }, [items, sessionId, API_BASE_URL]);
+
   // Detect if we're in Google Meet Add-on context
   const isInMeetAddon = window.location.pathname.includes('/meet/');
 
@@ -589,36 +619,42 @@ export function BoardApp() {
     // Polling function for Meet Add-ons (SSE blocked by CSP)
     const pollForUpdates = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/board-items`);
+        const response = await fetch(`${API_BASE_URL}/api/board-items?sessionId=${sessionId}`);
         if (!response.ok) {
           console.error("❌ Polling failed:", response.status);
           return;
         }
 
-        const allItems = await response.json();
+        const data = await response.json();
+        const allItems = data.items || data;
         
         // Check if new items were added
         if (allItems.length > lastItemCount) {
           console.log(`📦 Polling detected ${allItems.length - lastItemCount} new items`);
           
-          // Find new items
-          const currentIds = new Set(items.map((it: any) => it.id));
-          const newItems = allItems.filter((item: any) => !currentIds.has(item.id));
-          
-          if (newItems.length > 0) {
-            console.log(`✅ Adding ${newItems.length} new items from polling`);
-            setItems(allItems);
+          // Use functional update to avoid dependency on items
+          setItems((currentItems: any[]) => {
+            const currentIds = new Set(currentItems.map((it: any) => it.id));
+            const newItems = allItems.filter((item: any) => !currentIds.has(item.id));
             
-            // Auto-focus on the newest item
-            const newestItem = newItems[newItems.length - 1];
-            setTimeout(() => {
-              if ((window as any).centerOnItem) {
-                console.log("🎯 Auto-focusing on new item:", newestItem.id);
-                const zoomLevel = newestItem.type === "doctor-note" ? 1.0 : 0.8;
-                (window as any).centerOnItem(newestItem.id, zoomLevel, 1200);
-              }
-            }, 500);
-          }
+            if (newItems.length > 0) {
+              console.log(`✅ Adding ${newItems.length} new items from polling`);
+              
+              // Auto-focus on the newest item
+              const newestItem = newItems[newItems.length - 1];
+              setTimeout(() => {
+                if ((window as any).centerOnItem) {
+                  console.log("🎯 Auto-focusing on new item:", newestItem.id);
+                  const zoomLevel = newestItem.type === "doctor-note" ? 1.0 : 0.8;
+                  (window as any).centerOnItem(newestItem.id, zoomLevel, 1200);
+                }
+              }, 500);
+              
+              return allItems;
+            }
+            
+            return currentItems;
+          });
         }
         
         lastItemCount = allItems.length;
@@ -763,7 +799,7 @@ export function BoardApp() {
         es.close();
       }
     };
-  }, [handleFocusRequest, API_BASE_URL, isInMeetAddon, items, sessionId]);
+  }, [handleFocusRequest, API_BASE_URL, isInMeetAddon, sessionId]); // Removed 'items' from dependencies
 
   // Show session selector if no session ID
   if (!sessionId) {
