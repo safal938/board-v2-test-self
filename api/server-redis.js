@@ -92,26 +92,34 @@ const sessionMiddleware = (req, res, next) => {
     req.body?.sessionId ||
     req.body?.session_id;
 
-  // If no session ID provided, create a new one
-  if (!sessionId) {
-    sessionId = uuidv4();
-    console.log(`🆕 Created new session: ${sessionId}`);
+  // Attach to request (can be null)
+  req.sessionId = sessionId || null;
+
+  // Send session ID in response header if it exists
+  if (sessionId) {
+    res.setHeader("X-Session-Id", sessionId);
   }
 
-  // Attach to request
-  req.sessionId = sessionId;
+  next();
+};
 
-  // Send session ID in response header
-  res.setHeader("X-Session-Id", sessionId);
-
+// Middleware to require session ID
+const requireSession = (req, res, next) => {
+  if (!req.sessionId) {
+    return res.status(400).json({
+      error: "Session ID required",
+      message: "Please provide a session ID via X-Session-Id header, sessionId query parameter, or in request body",
+      hint: "Create a new session by calling POST /api/session/create"
+    });
+  }
   next();
 };
 
 // Apply session middleware to all API routes
 app.use("/api", sessionMiddleware);
 
-// SSE endpoint - session-specific
-app.get("/api/events", (req, res) => {
+// SSE endpoint - session-specific (requires session ID)
+app.get("/api/events", requireSession, (req, res) => {
   const sessionId = req.sessionId;
 
   res.setHeader("Content-Type", "text/event-stream");
@@ -682,8 +690,8 @@ const findNonOverlappingPosition = (newItem, existingItems) => {
   return { x: testX, y: testY };
 };
 
-// GET /api/board-items - Get all board items for session
-app.get("/api/board-items", async (req, res) => {
+// GET /api/board-items - Get all board items for session (requires session ID)
+app.get("/api/board-items", requireSession, async (req, res) => {
   try {
     const sessionId = req.sessionId;
     const items = await loadBoardItems(sessionId);
@@ -699,8 +707,8 @@ app.get("/api/board-items", async (req, res) => {
   }
 });
 
-// POST /api/todos - Create a new TODO board item (session-aware)
-app.post("/api/todos", async (req, res) => {
+// POST /api/todos - Create a new TODO board item (requires session ID)
+app.post("/api/todos", requireSession, async (req, res) => {
   try {
     const sessionId = req.sessionId;
     const { title, description, todo_items } = req.body || {};
@@ -788,8 +796,8 @@ app.post("/api/todos", async (req, res) => {
   }
 });
 
-// POST /api/agents - Create agent item (session-aware)
-app.post("/api/agents", async (req, res) => {
+// POST /api/agents - Create agent item (requires session ID)
+app.post("/api/agents", requireSession, async (req, res) => {
   try {
     const sessionId = req.sessionId;
     const { title, content, zone } = req.body || {};
@@ -876,8 +884,8 @@ app.post("/api/agents", async (req, res) => {
   }
 });
 
-// POST /api/focus - Focus on item (session-aware)
-app.post("/api/focus", (req, res) => {
+// POST /api/focus - Focus on item (requires session ID)
+app.post("/api/focus", requireSession, (req, res) => {
   const sessionId = req.sessionId;
   const { objectId, itemId, subElement, focusOptions } = req.body;
 
@@ -923,8 +931,26 @@ app.post("/api/focus", (req, res) => {
   });
 });
 
-// GET /api/session - Get current session info
-app.get("/api/session", async (req, res) => {
+// POST /api/session/create - Create a new session
+app.post("/api/session/create", async (req, res) => {
+  const sessionId = uuidv4();
+  
+  // Initialize with static board items
+  const staticItems = await loadStaticItems();
+  await saveBoardItems(sessionId, staticItems);
+  
+  console.log(`🆕 Created new session: ${sessionId}`);
+  
+  res.status(201).json({
+    sessionId,
+    itemCount: staticItems.length,
+    createdAt: new Date().toISOString(),
+    message: "Session created successfully"
+  });
+});
+
+// GET /api/session - Get current session info (requires session ID)
+app.get("/api/session", requireSession, async (req, res) => {
   const sessionId = req.sessionId;
   const items = await loadBoardItems(sessionId);
 
@@ -936,8 +962,8 @@ app.get("/api/session", async (req, res) => {
   });
 });
 
-// DELETE /api/session - Clear session data
-app.delete("/api/session", async (req, res) => {
+// DELETE /api/session - Clear session data (requires session ID)
+app.delete("/api/session", requireSession, async (req, res) => {
   const sessionId = req.sessionId;
 
   // Clear from Redis
@@ -970,8 +996,8 @@ app.delete("/api/session", async (req, res) => {
   });
 });
 
-// POST /api/lab-results - Create a new lab result board item (session-aware)
-app.post("/api/lab-results", async (req, res) => {
+// POST /api/lab-results - Create a new lab result board item (requires session ID)
+app.post("/api/lab-results", requireSession, async (req, res) => {
   try {
     const sessionId = req.sessionId;
     const { parameter, value, unit, status, range, trend } = req.body || {};
@@ -1052,8 +1078,8 @@ app.post("/api/lab-results", async (req, res) => {
   }
 });
 
-// POST /api/ehr-data - Create a new EHR data item (session-aware)
-app.post("/api/ehr-data", async (req, res) => {
+// POST /api/ehr-data - Create a new EHR data item (requires session ID)
+app.post("/api/ehr-data", requireSession, async (req, res) => {
   try {
     const sessionId = req.sessionId;
     const { title, content, dataType, source, x, y, width, height } =
@@ -1124,8 +1150,8 @@ app.post("/api/ehr-data", async (req, res) => {
   }
 });
 
-// POST /api/doctor-notes - Create a new doctor's note (session-aware)
-app.post("/api/doctor-notes", async (req, res) => {
+// POST /api/doctor-notes - Create a new doctor's note (requires session ID)
+app.post("/api/doctor-notes", requireSession, async (req, res) => {
   console.log("📝 POST /api/doctor-notes - Creating doctor's note");
 
   try {
@@ -1187,8 +1213,8 @@ app.post("/api/doctor-notes", async (req, res) => {
   }
 });
 
-// POST /api/enhanced-todo - Create enhanced todo with agent delegation (session-aware)
-app.post("/api/enhanced-todo", async (req, res) => {
+// POST /api/enhanced-todo - Create enhanced todo with agent delegation (requires session ID)
+app.post("/api/enhanced-todo", requireSession, async (req, res) => {
   try {
     const sessionId = req.sessionId;
     const {
@@ -1312,8 +1338,8 @@ app.post("/api/enhanced-todo", async (req, res) => {
   }
 });
 
-// POST /api/board-items - Create a new board item (session-aware)
-app.post("/api/board-items", async (req, res) => {
+// POST /api/board-items - Create a new board item (requires session ID)
+app.post("/api/board-items", requireSession, async (req, res) => {
   try {
     const sessionId = req.sessionId;
     const {
@@ -1410,8 +1436,8 @@ app.post("/api/board-items", async (req, res) => {
   }
 });
 
-// PUT /api/board-items/:id - Update a board item (session-aware)
-app.put("/api/board-items/:id", async (req, res) => {
+// PUT /api/board-items/:id - Update a board item (requires session ID)
+app.put("/api/board-items/:id", requireSession, async (req, res) => {
   try {
     const sessionId = req.sessionId;
     const { id } = req.params;
@@ -1455,8 +1481,8 @@ const releaseLock = (sessionId) => {
   sessionLocks.delete(sessionId);
 };
 
-// DELETE /api/board-items/:id - Delete a board item (session-aware with lock)
-app.delete("/api/board-items/:id", async (req, res) => {
+// DELETE /api/board-items/:id - Delete a board item (requires session ID)
+app.delete("/api/board-items/:id", requireSession, async (req, res) => {
   const sessionId = req.sessionId;
   const { id } = req.params;
 
@@ -1489,8 +1515,8 @@ app.delete("/api/board-items/:id", async (req, res) => {
   }
 });
 
-// POST /api/board-items/batch-delete - Delete multiple items at once (session-aware)
-app.post("/api/board-items/batch-delete", async (req, res) => {
+// POST /api/board-items/batch-delete - Delete multiple items at once (requires session ID)
+app.post("/api/board-items/batch-delete", requireSession, async (req, res) => {
   const sessionId = req.sessionId;
   const { itemIds } = req.body;
 
@@ -1530,8 +1556,8 @@ app.post("/api/board-items/batch-delete", async (req, res) => {
   }
 });
 
-// POST /api/board-items/sync - Sync all items to Redis (session-aware)
-app.post("/api/board-items/sync", async (req, res) => {
+// POST /api/board-items/sync - Sync all items to Redis (requires session ID)
+app.post("/api/board-items/sync", requireSession, async (req, res) => {
   const sessionId = req.sessionId;
   const { items } = req.body;
 
@@ -1611,27 +1637,32 @@ app.get("/api", (req, res) => {
     name: "Canvas Board API (Session-Based)",
     version: "2.0.0",
     status: "running",
-    sessionId: req.sessionId,
     timestamp: new Date().toISOString(),
+    sessionRequired: "Most endpoints require a session ID",
+    howToStart: "Create a session first: POST /api/session/create",
     endpoints: {
-      session: "GET /api/session",
-      boardItems: "GET /api/board-items",
-      createBoardItem: "POST /api/board-items",
-      updateBoardItem: "PUT /api/board-items/:id",
-      deleteBoardItem: "DELETE /api/board-items/:id",
-      events: "GET /api/events (SSE)",
-      createTodo: "POST /api/todos",
-      createEnhancedTodo: "POST /api/enhanced-todo",
-      createAgent: "POST /api/agents",
-      createLabResult: "POST /api/lab-results",
-      createEhrData: "POST /api/ehr-data",
-      createDoctorNote: "POST /api/doctor-notes",
-      focus: "POST /api/focus",
-      selectedItem: "POST /api/selected-item",
-      clearSession: "DELETE /api/session",
+      createSession: "POST /api/session/create (no session required)",
+      health: "GET /api/health (no session required)",
+      session: "GET /api/session (requires session)",
+      boardItems: "GET /api/board-items (requires session)",
+      createBoardItem: "POST /api/board-items (requires session)",
+      updateBoardItem: "PUT /api/board-items/:id (requires session)",
+      deleteBoardItem: "DELETE /api/board-items/:id (requires session)",
+      events: "GET /api/events (SSE, requires session)",
+      createTodo: "POST /api/todos (requires session)",
+      createEnhancedTodo: "POST /api/enhanced-todo (requires session)",
+      createAgent: "POST /api/agents (requires session)",
+      createLabResult: "POST /api/lab-results (requires session)",
+      createEhrData: "POST /api/ehr-data (requires session)",
+      createDoctorNote: "POST /api/doctor-notes (requires session)",
+      focus: "POST /api/focus (requires session)",
+      selectedItem: "POST /api/selected-item (requires session)",
+      clearSession: "DELETE /api/session (requires session)",
     },
-    sessionInfo:
-      "Include X-Session-Id header or sessionId in body/query to use existing session",
+    sessionInfo: {
+      howToProvide: "Include session ID via X-Session-Id header, sessionId query parameter, or in request body",
+      example: "curl -H 'X-Session-Id: your-session-id' http://localhost:3001/api/board-items"
+    }
   });
 });
 
