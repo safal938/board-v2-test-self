@@ -15,12 +15,12 @@ const AppContainer = styled.div`
   position: relative;
 `;
 
-const ConnectionStatus = styled.div`
+const ConnectionStatus = styled.div<{ mode: 'sse' | 'polling' }>`
   position: fixed;
   top: 10px;
   right: 10px;
   padding: 8px 16px;
-  background: #34a853;
+  background: ${props => props.mode === 'sse' ? '#34a853' : '#fbbc04'};
   color: white;
   border-radius: 20px;
   font-size: 12px;
@@ -606,12 +606,94 @@ export function BoardApp() {
     return () => clearTimeout(syncTimeout);
   }, [items, sessionId, API_BASE_URL]);
 
-  // Connect to backend SSE
+  // Detect if we're in Google Meet Add-on context
+  const isInMeetAddon = window.location.pathname.includes('/meet/');
+
+  // Connect to backend SSE or use polling for Meet Add-ons
   useEffect(() => {
     let es: EventSource | null = null;
     let reconnectTimeout: NodeJS.Timeout | null = null;
+    let pollingInterval: NodeJS.Timeout | null = null;
+    let lastItemCount = 0;
 
-    const connect = () => {
+    // Polling function for Meet Add-ons (SSE blocked by CSP)
+    const pollForUpdates = async () => {
+      try {
+        // Poll for new board items
+        const response = await fetch(`${API_BASE_URL}/api/board-items?sessionId=${sessionId}`);
+        if (!response.ok) {
+          console.error("❌ Polling failed:", response.status);
+          return;
+        }
+
+        const data = await response.json();
+        const allItems = data.items || data;
+        
+        // Check if new items were added
+        if (allItems.length > lastItemCount) {
+          console.log(`📦 Polling detected ${allItems.length - lastItemCount} new items`);
+          
+          // Use functional update to avoid dependency on items
+          setItems((currentItems: any[]) => {
+            const currentIds = new Set(currentItems.map((it: any) => it.id));
+            const newItems = allItems.filter((item: any) => !currentIds.has(item.id));
+            
+            if (newItems.length > 0) {
+              console.log(`✅ Adding ${newItems.length} new items from polling`);
+              
+              // Auto-focus on the newest item
+              const newestItem = newItems[newItems.length - 1];
+              setTimeout(() => {
+                if ((window as any).centerOnItem) {
+                  console.log("🎯 Auto-focusing on new item:", newestItem.id);
+                  const zoomLevel = newestItem.type === "doctor-note" ? 1.0 : 0.8;
+                  (window as any).centerOnItem(newestItem.id, zoomLevel, 1200);
+                }
+              }, 500);
+              
+              return allItems;
+            }
+            
+            return currentItems;
+          });
+        }
+        
+        lastItemCount = allItems.length;
+
+        // Poll for focus events (Meet Add-on specific)
+        const focusResponse = await fetch(`${API_BASE_URL}/api/focus-events?sessionId=${sessionId}`);
+        if (focusResponse.ok) {
+          const focusData = await focusResponse.json();
+          if (focusData.events && focusData.events.length > 0) {
+            console.log(`🎯 Polling detected ${focusData.events.length} focus event(s)`);
+            
+            // Process each focus event
+            focusData.events.forEach((focusEvent: any) => {
+              console.log("🎯 Processing focus event:", focusEvent);
+              handleFocusRequest({
+                objectId: focusEvent.objectId || focusEvent.itemId,
+                subElement: focusEvent.subElement,
+                focusOptions: focusEvent.focusOptions,
+              });
+            });
+          }
+        }
+      } catch (error) {
+        console.error("❌ Polling error:", error);
+      }
+    };
+
+    // Use polling for Meet Add-ons, SSE for regular browser
+    if (isInMeetAddon) {
+      console.log("🔄 Using polling mode (Meet Add-on detected)");
+      // Poll every 2 seconds
+      pollingInterval = setInterval(pollForUpdates, 2000);
+      // Initial poll
+      pollForUpdates();
+    } else {
+      console.log("🔌 Using SSE mode (regular browser)");
+      
+      const connect = () => {
         try {
           // Connect directly to the backend SSE endpoint (session-aware)
           const sseUrl = `${API_BASE_URL}/api/events?sessionId=${sessionId}`;
@@ -723,17 +805,21 @@ export function BoardApp() {
       };
 
       connect();
+    }
 
     return () => {
       if (reconnectTimeout) {
         clearTimeout(reconnectTimeout);
+      }
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
       }
       if (es) {
         console.log("🔌 Closing SSE connection");
         es.close();
       }
     };
-  }, [handleFocusRequest, API_BASE_URL, sessionId]); // Removed 'items' from dependencies
+  }, [handleFocusRequest, API_BASE_URL, isInMeetAddon, sessionId]); // Removed 'items' from dependencies
 
   // Show session selector if no session ID
   if (!sessionId) {
@@ -828,8 +914,8 @@ export function BoardApp() {
       <LeaveSessionButton onClick={handleLeaveSession}>
         🚪 Leave Session
       </LeaveSessionButton>
-      <ConnectionStatus>
-        📡 Live Updates
+      <ConnectionStatus mode={isInMeetAddon ? 'polling' : 'sse'}>
+        {isInMeetAddon ? '🔄 Polling Mode (Meet)' : '📡 Live Updates (SSE)'}
       </ConnectionStatus>
       <Canvas
         items={items}
